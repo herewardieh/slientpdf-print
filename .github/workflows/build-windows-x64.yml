@@ -33,38 +33,38 @@ jobs:
 
       - name: Build with prebuildify
         run: npm run prebuildify
-        continue-on-error: false
-
-      - name: List build directory
-        run: |
-          Write-Host "Build directory contents:"
-          if (Test-Path "build\Release") {
-            dir build\Release
-          } else {
-            Write-Host "build\Release not found"
-          }
-
-      - name: List prebuilds directory
-        run: |
-          Write-Host "Prebuilds directory structure:"
-          if (Test-Path "prebuilds") {
-            Get-ChildItem -Recurse prebuilds | Select-Object FullName
-          } else {
-            Write-Host "prebuilds directory not found"
-          }
 
       - name: Verify prebuild outputs
         run: |
-          if (-not (Test-Path "prebuilds\win32-x64\node.napi.node")) {
-            Write-Host "Checking for alternative file names..."
-            if (Test-Path "prebuilds\win32-x64") {
-              Write-Host "Contents of prebuilds\win32-x64:"
-              dir prebuilds\win32-x64
+          $moduleFound = $false
+          $moduleName = ""
+
+          # Check for different possible file names
+          $possibleNames = @("node.napi.node", "slientpdf-print.node", "pdfprint.node")
+
+          foreach ($name in $possibleNames) {
+            $path = "prebuilds\win32-x64\$name"
+            if (Test-Path $path) {
+              $moduleFound = $true
+              $moduleName = $name
+              Write-Host "Found prebuilt module: $name"
+              break
             }
-            Write-Error "Prebuilt module not found in prebuilds\win32-x64\node.napi.node"
+          }
+
+          if (-not $moduleFound) {
+            Write-Host "Prebuilt module not found. Checking prebuilds\win32-x64 contents:"
+            if (Test-Path "prebuilds\win32-x64") {
+              dir prebuilds\win32-x64
+            } else {
+              Write-Host "prebuilds\win32-x64 directory does not exist"
+            }
+            Write-Error "Prebuilt module not found in prebuilds\win32-x64"
             exit 1
           }
-          Write-Host "Prebuilt module verified:"
+
+          Write-Host "Prebuilt module verified: $moduleName"
+          Write-Host "All files in prebuilds\win32-x64:"
           dir prebuilds\win32-x64
 
       - name: Upload artifacts
