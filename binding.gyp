@@ -29,7 +29,12 @@
             "VCCLCompilerTool": {
               "ExceptionHandling": 1,
               "RuntimeLibrary": 2,
-              "AdditionalOptions": ["/std:c++14"]
+              "AdditionalOptions": ["/std:c++14"],
+              "AdditionalIncludeDirectories": [
+                "<!@(node -p \"require('nan').include\")",
+                "pdfium-prebuilt/pdfium-win-x64/include",
+                "pdfium-prebuilt/pdfium-win-x64/include/cpp"
+              ]
             },
             "VCLinkerTool": {
               "AdditionalLibraryDirectories": [

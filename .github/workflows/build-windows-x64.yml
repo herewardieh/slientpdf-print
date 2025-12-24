@@ -43,6 +43,20 @@ jobs:
           Write-Host "nan module verified successfully"
           Write-Host "nan.h location: node_modules\nan\nan.h"
 
+      - name: Test nan include path resolution
+        run: |
+          $nanPath = node -p "require('nan').include"
+          Write-Host "nan include path resolved to: $nanPath"
+          if (-not (Test-Path $nanPath)) {
+            Write-Error "Resolved nan path does not exist: $nanPath"
+            exit 1
+          }
+          if (-not (Test-Path "$nanPath\nan.h")) {
+            Write-Error "nan.h not found at resolved path: $nanPath\nan.h"
+            exit 1
+          }
+          Write-Host "nan include path verified: $nanPath"
+
       - name: Build
         run: npm run build
 
