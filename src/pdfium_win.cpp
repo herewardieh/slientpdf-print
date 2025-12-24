@@ -1,4 +1,4 @@
-#include "pdfium_wrapper.h"
+#include "pdfium_win.h"
 #include "fpdfview.h"
 #include "fpdf_doc.h"
 #include <windows.h>
@@ -116,7 +116,7 @@ BitmapData* PdfiumWrapper::RenderPageToBitmap(int pageIndex, int dpi) {
     result->width = pixelWidth;
     result->height = pixelHeight;
     result->stride = stride;
-    result->format = 0; // BGRA
+    result->bitmapFormat = 0; // BGRA
     
     FPDFBitmap_Destroy(bitmap);
     FPDF_ClosePage(page);

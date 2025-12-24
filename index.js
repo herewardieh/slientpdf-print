@@ -1,4 +1,8 @@
-const pdfprint = require("./build/Release/pdfprint.node");
+const path = require("path");
+const nodeGypBuild = require("node-gyp-build");
+
+// 使用 node-gyp-build 加载原生模块
+const pdfprint = nodeGypBuild(path.join(__dirname));
 
 /**
  * Initialize the pdfium library

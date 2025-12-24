@@ -1,12 +1,10 @@
-#include <nan.h>
+#include <napi.h>
 #include <windows.h>
 #include <winspool.h>
 #include <commdlg.h>
 #include <cstring>
 #include <algorithm>
-#include "pdfium_wrapper.h"
-
-using namespace v8;
+#include "pdfium_win.h"
 
 // Windows printing functions - silently print to default printer
 static bool PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName) {
@@ -162,69 +160,72 @@ static HBITMAP CreateHBITMAPFromBitmapData(BitmapData* bitmapData) {
 }
 
 // Initialize pdfium library
-NAN_METHOD(Initialize) {
+Napi::Value Initialize(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
     bool result = PdfiumWrapper::Initialize();
-    info.GetReturnValue().Set(Nan::New(result));
+    return Napi::Boolean::New(env, result);
 }
 
 // Load PDF file
-NAN_METHOD(LoadPdf) {
-    if (!info[0]->IsString()) {
-        Nan::ThrowTypeError("Argument must be a string (file path)");
-        return;
+Napi::Value LoadPdf(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (!info[0].IsString()) {
+        Napi::TypeError::New(env, "Argument must be a string (file path)").ThrowAsJavaScriptException();
+        return env.Null();
     }
     
-    Nan::Utf8String path(info[0]);
-    std::string filePath(*path);
-    
+    std::string filePath = info[0].As<Napi::String>().Utf8Value();
     bool result = PdfiumWrapper::LoadPdf(filePath);
-    info.GetReturnValue().Set(Nan::New(result));
+    return Napi::Boolean::New(env, result);
 }
 
 // Get page count
-NAN_METHOD(GetPageCount) {
+Napi::Value GetPageCount(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
     int count = PdfiumWrapper::GetPageCount();
-    info.GetReturnValue().Set(Nan::New(count));
+    return Napi::Number::New(env, count);
 }
 
 // Print PDF to default printer
-NAN_METHOD(PrintPdf) {
-    if (!info[0]->IsString()) {
-        Nan::ThrowTypeError("Argument must be a string (file path)");
-        return;
+Napi::Value PrintPdf(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (!info[0].IsString()) {
+        Napi::TypeError::New(env, "Argument must be a string (file path)").ThrowAsJavaScriptException();
+        return env.Null();
     }
     
     int dpi = 300; // Default DPI
-    if (info[1]->IsNumber()) {
-        dpi = Nan::To<int>(info[1]).FromJust();
+    if (info.Length() > 1 && info[1].IsNumber()) {
+        dpi = info[1].As<Napi::Number>().Int32Value();
         // Validate DPI range (72-1200 is reasonable)
         if (dpi < 72 || dpi > 1200) {
-            Nan::ThrowRangeError("DPI must be between 72 and 1200");
-            return;
+            Napi::RangeError::New(env, "DPI must be between 72 and 1200").ThrowAsJavaScriptException();
+            return env.Null();
         }
     }
     
-    Nan::Utf8String path(info[0]);
-    std::string filePath(*path);
+    std::string filePath = info[0].As<Napi::String>().Utf8Value();
     
     // Initialize pdfium
     if (!PdfiumWrapper::Initialize()) {
-        Nan::ThrowError("Failed to initialize pdfium");
-        return;
+        Napi::Error::New(env, "Failed to initialize pdfium").ThrowAsJavaScriptException();
+        return env.Null();
     }
     
     // Load PDF
     if (!PdfiumWrapper::LoadPdf(filePath)) {
         PdfiumWrapper::Shutdown();
-        Nan::ThrowError("Failed to load PDF file");
-        return;
+        Napi::Error::New(env, "Failed to load PDF file").ThrowAsJavaScriptException();
+        return env.Null();
     }
     
     int pageCount = PdfiumWrapper::GetPageCount();
     if (pageCount == 0) {
         PdfiumWrapper::Shutdown();
-        Nan::ThrowError("PDF has no pages");
-        return;
+        Napi::Error::New(env, "PDF has no pages").ThrowAsJavaScriptException();
+        return env.Null();
     }
     
     // Print each page
@@ -258,16 +259,17 @@ NAN_METHOD(PrintPdf) {
     PdfiumWrapper::CloseDocument();
     PdfiumWrapper::Shutdown();
     
-    info.GetReturnValue().Set(Nan::New(success));
+    return Napi::Boolean::New(env, success);
 }
 
 // Module initialization
-NAN_MODULE_INIT(Init) {
-    Nan::SetMethod(target, "initialize", Initialize);
-    Nan::SetMethod(target, "loadPdf", LoadPdf);
-    Nan::SetMethod(target, "getPageCount", GetPageCount);
-    Nan::SetMethod(target, "printPdf", PrintPdf);
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set(Napi::String::New(env, "initialize"), Napi::Function::New(env, Initialize));
+    exports.Set(Napi::String::New(env, "loadPdf"), Napi::Function::New(env, LoadPdf));
+    exports.Set(Napi::String::New(env, "getPageCount"), Napi::Function::New(env, GetPageCount));
+    exports.Set(Napi::String::New(env, "printPdf"), Napi::Function::New(env, PrintPdf));
+    return exports;
 }
 
-NODE_MODULE(pdfprint, Init)
+NODE_API_MODULE(pdfprint, Init)
 

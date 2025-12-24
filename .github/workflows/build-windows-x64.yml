@@ -7,7 +7,8 @@ on:
   pull_request:
 
 jobs:
-  build-windows-x64:
+  prebuild:
+    name: Build Windows x64
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -28,40 +29,24 @@ jobs:
           Write-Host "pdfium-prebuilt directory verified"
 
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm ci
 
-      - name: Verify nan is installed
+      - name: Build with prebuildify
+        run: npm run prebuildify
+
+      - name: Verify prebuild outputs
         run: |
-          if (-not (Test-Path "node_modules\nan")) {
-            Write-Error "nan module not found in node_modules"
+          if (-not (Test-Path "prebuilds\win32-x64\node.napi.node")) {
+            Write-Error "Prebuilt module not found in prebuilds\win32-x64"
             exit 1
           }
-          if (-not (Test-Path "node_modules\nan\nan.h")) {
-            Write-Error "nan.h not found in node_modules\nan"
-            exit 1
-          }
-          Write-Host "nan module verified successfully"
-          Write-Host "nan.h location: node_modules\nan\nan.h"
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify build outputs
-        run: |
-          if (-not (Test-Path "build\Release\pdfprint.node")) {
-            Write-Error "pdfprint.node not found in build\Release"
-            exit 1
-          }
-          if (-not (Test-Path "build\Release\pdfium.dll")) {
-            Write-Error "pdfium.dll not found in build\Release"
-            exit 1
-          }
-          Write-Host "Build outputs verified:"
-          dir build\Release
+          Write-Host "Prebuilt module verified:"
+          dir prebuilds\win32-x64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-windows-x64
-          path: build/Release/pdfprint.node
+          name: build-artifacts-win32-x64
+          path: prebuilds/
+          if-no-files-found: error
           retention-days: 7

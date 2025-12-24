@@ -4,10 +4,10 @@
       "target_name": "pdfprint",
       "sources": [
         "src/pdfprint.cpp",
-        "src/pdfium_wrapper.cpp"
+        "src/pdfium_win.cpp"
       ],
       "include_dirs": [
-        "node_modules/nan",
+        "<!(node -p \"require('node-addon-api').include_dir\")",
         "pdfium-prebuilt/pdfium-win-x64/include",
         "pdfium-prebuilt/pdfium-win-x64/include/cpp"
       ],
@@ -20,18 +20,19 @@
         "pdfium-prebuilt/pdfium-win-x64/lib"
       ],
       "defines": [
+        "NAPI_CPP_EXCEPTIONS",
         "V8_DEPRECATION_WARNINGS=1",
         "PDF_ENABLE_V8=1"
       ],
+      "cflags!": ["-fno-exceptions"],
+      "cflags_cc!": ["-fno-exceptions"],
       "conditions": [
         ["OS=='win'", {
           "msvs_settings": {
             "VCCLCompilerTool": {
               "ExceptionHandling": 1,
-              "RuntimeLibrary": 2,
-              "AdditionalOptions": ["/std:c++17"],
               "AdditionalIncludeDirectories": [
-                "..\\node_modules\\nan",
+                "<!(node -p \"require('node-addon-api').include_dir\")",
                 "..\\pdfium-prebuilt\\pdfium-win-x64\\include",
                 "..\\pdfium-prebuilt\\pdfium-win-x64\\include\\cpp"
               ]

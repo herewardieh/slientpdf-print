@@ -1,5 +1,5 @@
-#ifndef PDFIUM_WRAPPER_H
-#define PDFIUM_WRAPPER_H
+#ifndef PDFIUM_WIN_H
+#define PDFIUM_WIN_H
 
 #include <string>
 #include <vector>
@@ -13,7 +13,7 @@ struct BitmapData {
     int width;            // 位图宽度（像素）
     int height;           // 位图高度（像素）
     int stride;           // 每行字节数
-    int format;           // 格式：0 = BGRA, 1 = BGR
+    int bitmapFormat;     // 格式：0 = BGRA, 1 = BGR
 };
 
 /**
@@ -69,4 +69,5 @@ public:
     static void CloseDocument();
 };
 
-#endif // PDFIUM_WRAPPER_H
+#endif // PDFIUM_WIN_H
+
