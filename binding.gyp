@@ -7,7 +7,7 @@
         "src/pdfium_wrapper.cpp"
       ],
       "include_dirs": [
-        "<!(node -p \"require('nan').include\")",
+        "node_modules/nan",
         "pdfium-prebuilt/pdfium-win-x64/include",
         "pdfium-prebuilt/pdfium-win-x64/include/cpp"
       ],
@@ -31,9 +31,9 @@
               "RuntimeLibrary": 2,
               "AdditionalOptions": ["/std:c++14"],
               "AdditionalIncludeDirectories": [
-                "<!(node -p \"require('nan').include\")",
-                "pdfium-prebuilt/pdfium-win-x64/include",
-                "pdfium-prebuilt/pdfium-win-x64/include/cpp"
+                "..\\node_modules\\nan",
+                "..\\pdfium-prebuilt\\pdfium-win-x64\\include",
+                "..\\pdfium-prebuilt\\pdfium-win-x64\\include\\cpp"
               ]
             },
             "VCLinkerTool": {
