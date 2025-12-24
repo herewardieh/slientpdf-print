@@ -39,8 +39,7 @@
             "VCLinkerTool": {
               "AdditionalLibraryDirectories": [
                 "..\\pdfium-prebuilt\\pdfium-win-x64\\lib"
-              ],
-              "Machine": "MachineX64"
+              ]
             }
           },
           "copies": [
