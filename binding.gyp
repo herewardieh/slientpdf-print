@@ -12,7 +12,7 @@
         "pdfium-prebuilt/pdfium-win-x64/include/cpp"
       ],
       "libraries": [
-        "pdfium",
+        "pdfium.dll.lib",
         "-lgdi32",
         "-lwinspool"
       ],
@@ -38,7 +38,7 @@
             },
             "VCLinkerTool": {
               "AdditionalLibraryDirectories": [
-                "pdfium-prebuilt/pdfium-win-x64/lib"
+                "..\\pdfium-prebuilt\\pdfium-win-x64\\lib"
               ],
               "Machine": "MachineX64"
             }
