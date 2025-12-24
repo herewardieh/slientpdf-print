@@ -45,7 +45,7 @@ jobs:
 
       - name: Test nan include path resolution
         run: |
-          $nanPath = node -p "require('nan').include"
+          $nanPath = node -p "require('path').resolve('node_modules/nan')"
           Write-Host "nan include path resolved to: $nanPath"
           if (-not (Test-Path $nanPath)) {
             Write-Error "Resolved nan path does not exist: $nanPath"
