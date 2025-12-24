@@ -19,14 +19,6 @@ jobs:
           node-version: "20"
           architecture: "x64"
 
-      - name: Verify pdfium_prebuilt exists
-        run: |
-          if (-not (Test-Path "pdfium_prebuilt/pdfium-win-x64")) {
-            Write-Error "pdfium_prebuilt/pdfium-win-x64 not found. Please add prebuilt pdfium."
-            exit 1
-          }
-          Write-Host "pdfium_prebuilt directory verified"
-
       - name: Install dependencies
         run: npm install
 
