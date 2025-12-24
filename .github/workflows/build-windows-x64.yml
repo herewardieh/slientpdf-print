@@ -19,8 +19,29 @@ jobs:
           node-version: "20"
           architecture: "x64"
 
+      - name: Verify pdfium-prebuilt exists
+        run: |
+          if (-not (Test-Path "pdfium-prebuilt\pdfium-win-x64")) {
+            Write-Error "pdfium-prebuilt\pdfium-win-x64 not found. Please ensure pdfium-prebuilt directory is committed to the repository."
+            exit 1
+          }
+          Write-Host "pdfium-prebuilt directory verified"
+
       - name: Install dependencies
-        run: npm install
+        run: npm install --ignore-scripts
+
+      - name: Verify nan is installed
+        run: |
+          if (-not (Test-Path "node_modules\nan")) {
+            Write-Error "nan module not found in node_modules"
+            exit 1
+          }
+          if (-not (Test-Path "node_modules\nan\nan.h")) {
+            Write-Error "nan.h not found in node_modules\nan"
+            exit 1
+          }
+          Write-Host "nan module verified successfully"
+          Write-Host "nan.h location: node_modules\nan\nan.h"
 
       - name: Build
         run: npm run build

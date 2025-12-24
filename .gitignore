@@ -5,8 +5,6 @@ pdfium/
 *.pdb
 *.obj
 *.exe
-*.dll
-*.lib
 .DS_Store
 
 

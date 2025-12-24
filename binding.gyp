@@ -8,8 +8,8 @@
       ],
       "include_dirs": [
         "<!@(node -p \"require('nan').include\")",
-        "pdfium_prebuilt/pdfium-win-x64/include",
-        "pdfium_prebuilt/pdfium-win-x64/include/cpp"
+        "pdfium-prebuilt/pdfium-win-x64/include",
+        "pdfium-prebuilt/pdfium-win-x64/include/cpp"
       ],
       "libraries": [
         "pdfium",
@@ -17,7 +17,7 @@
         "-lwinspool"
       ],
       "library_dirs": [
-        "pdfium_prebuilt/pdfium-win-x64/lib"
+        "pdfium-prebuilt/pdfium-win-x64/lib"
       ],
       "defines": [
         "V8_DEPRECATION_WARNINGS=1",
@@ -33,7 +33,7 @@
             },
             "VCLinkerTool": {
               "AdditionalLibraryDirectories": [
-                "pdfium_prebuilt/pdfium-win-x64/lib"
+                "pdfium-prebuilt/pdfium-win-x64/lib"
               ],
               "Machine": "MachineX64"
             }
@@ -42,7 +42,7 @@
             {
               "destination": "<(PRODUCT_DIR)",
               "files": [
-                "pdfium_prebuilt/pdfium-win-x64/bin/pdfium.dll"
+                "pdfium-prebuilt/pdfium-win-x64/bin/pdfium.dll"
               ]
             }
           ]
