@@ -1,0 +1,57 @@
+name: Build Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (x64)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          architecture: "x64"
+
+      - name: Verify pdfium_prebuilt exists
+        run: |
+          if (-not (Test-Path "pdfium_prebuilt/pdfium-win-x64")) {
+            Write-Error "pdfium_prebuilt/pdfium-win-x64 not found. Please add prebuilt pdfium."
+            exit 1
+          }
+          Write-Host "pdfium_prebuilt directory verified"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build outputs
+        run: |
+          if (-not (Test-Path "build\Release\pdfprint.node")) {
+            Write-Error "pdfprint.node not found in build\Release"
+            exit 1
+          }
+          if (-not (Test-Path "build\Release\pdfium.dll")) {
+            Write-Error "pdfium.dll not found in build\Release"
+            exit 1
+          }
+          Write-Host "Build outputs verified:"
+          dir build\Release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-windows-x64
+          path: |
+            build/Release/pdfprint.node
+            build/Release/pdfium.dll
+            build/Release/*.pdb
+          retention-days: 7

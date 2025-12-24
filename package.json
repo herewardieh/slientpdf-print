@@ -1,0 +1,29 @@
+{
+  "name": "slientpdf-print",
+  "version": "1.0.0",
+  "description": "Node.js module for printing PDF files silently using pdfium",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "clean": "node-gyp clean",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "pdf",
+    "print",
+    "pdfium",
+    "node-gyp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "gypfile": true,
+  "dependencies": {
+    "nan": "^2.18.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  }
+}
+
