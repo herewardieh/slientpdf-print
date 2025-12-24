@@ -29,7 +29,7 @@
             "VCCLCompilerTool": {
               "ExceptionHandling": 1,
               "RuntimeLibrary": 2,
-              "AdditionalOptions": ["/std:c++14"],
+              "AdditionalOptions": ["/std:c++17"],
               "AdditionalIncludeDirectories": [
                 "..\\node_modules\\nan",
                 "..\\pdfium-prebuilt\\pdfium-win-x64\\include",
