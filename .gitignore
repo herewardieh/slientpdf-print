@@ -6,5 +6,6 @@ pdfium/
 *.obj
 *.exe
 .DS_Store
+prebuilds/
 
 
