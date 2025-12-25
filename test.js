@@ -60,18 +60,43 @@ try {
   console.log("   注意: 确保已连接并配置了默认打印机");
   console.log("   DPI: 300 (默认)");
 
-  const dpi = 300;
-  const printResult = pdfprint.printPdf(testPdfPath, dpi);
+  try {
+    const dpi = 300;
+    const printResult = pdfprint.printPdf(testPdfPath, dpi);
 
-  if (printResult) {
-    console.log("✅ PDF 打印成功");
-    console.log(`   已发送 ${pageCount} 页到默认打印机`);
-  } else {
-    console.error("❌ PDF 打印失败");
-    console.error("   可能的原因:");
+    if (printResult) {
+      console.log("✅ PDF 打印成功");
+      console.log(`   已发送 ${pageCount} 页到默认打印机`);
+    } else {
+      console.error("❌ PDF 打印失败 (返回 false)");
+      console.error("   可能的原因:");
+      console.error("   - 没有配置默认打印机");
+      console.error("   - 打印机不可用或离线");
+      console.error("   - 打印权限不足");
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error("\n❌ PDF 打印时发生异常:");
+    console.error("   错误类型:", error.name || "Error");
+    console.error("   错误消息:", error.message || String(error));
+    if (error.stack) {
+      console.error("\n   错误堆栈:");
+      const stackLines = error.stack.split("\n");
+      stackLines.forEach((line, index) => {
+        if (index === 0) {
+          console.error(`   ${line}`);
+        } else {
+          console.error(`   ${line.trim()}`);
+        }
+      });
+    }
+    console.error("\n   可能的原因:");
     console.error("   - 没有配置默认打印机");
     console.error("   - 打印机不可用或离线");
     console.error("   - 打印权限不足");
+    console.error("   - PDF 文件损坏或格式不正确");
+    console.error("   - 渲染页面时出错");
+    console.error("   - 系统资源不足");
     process.exit(1);
   }
 

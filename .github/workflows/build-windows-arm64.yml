@@ -1,0 +1,78 @@
+name: Build Windows ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  prebuild:
+    name: Build Windows ARM64
+    runs-on: windows-11-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (ARM64)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          architecture: "arm64"
+
+      - name: Verify pdfium-prebuilt exists
+        run: |
+          if (-not (Test-Path "pdfium-prebuilt\pdfium-win-arm64")) {
+            Write-Error "pdfium-prebuilt\pdfium-win-arm64 not found. Please ensure pdfium-prebuilt directory is committed to the repository."
+            exit 1
+          }
+          Write-Host "pdfium-prebuilt directory verified"
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Build with prebuildify
+        run: npm run prebuildify
+        env:
+          TARGET_ARCH: arm64
+
+      - name: Verify prebuild outputs
+        run: |
+          $moduleFound = $false
+          $moduleName = ""
+
+          # Check for different possible file names
+          $possibleNames = @("node.napi.node", "slientpdf-print.node", "pdfprint.node")
+
+          foreach ($name in $possibleNames) {
+            $path = "prebuilds\win32-arm64\$name"
+            if (Test-Path $path) {
+              $moduleFound = $true
+              $moduleName = $name
+              Write-Host "Found prebuilt module: $name"
+              break
+            }
+          }
+
+          if (-not $moduleFound) {
+            Write-Host "Prebuilt module not found. Checking prebuilds\win32-arm64 contents:"
+            if (Test-Path "prebuilds\win32-arm64") {
+              dir prebuilds\win32-arm64
+            } else {
+              Write-Host "prebuilds\win32-arm64 directory does not exist"
+            }
+            Write-Error "Prebuilt module not found in prebuilds\win32-arm64"
+            exit 1
+          }
+
+          Write-Host "Prebuilt module verified: $moduleName"
+          Write-Host "All files in prebuilds\win32-arm64:"
+          dir prebuilds\win32-arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-win32-arm64
+          path: prebuilds/
+          if-no-files-found: error
+          retention-days: 7

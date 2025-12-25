@@ -4,12 +4,13 @@
 #include <commdlg.h>
 #include <cstring>
 #include <algorithm>
+#include <sstream>
 #include "pdfium_win.h"
 
 // Windows printing functions - silently print to default printer
-static bool PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName) {
+static void PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName, Napi::Env env) {
     if (!hBitmap) {
-        return false;
+        throw Napi::Error::New(env, "PrintBitmapToPrinter: hBitmap is null");
     }
     
     // Get default printer name if not provided
@@ -20,7 +21,9 @@ static bool PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName) {
     
     if (!printerName) {
         if (!GetDefaultPrinterW(defaultPrinterName, &nameLen)) {
-            return false;
+            DWORD errorCode = GetLastError();
+            std::string errorMsg = "Failed to get default printer, error code: " + std::to_string(errorCode);
+            throw Napi::Error::New(env, errorMsg);
         }
         actualPrinterName = defaultPrinterName;
     } else {
@@ -37,7 +40,9 @@ static bool PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName) {
     wcscpy_s(printerNameCopy, sizeof(printerNameCopy) / sizeof(printerNameCopy[0]), actualPrinterName);
     
     if (!OpenPrinterW(printerNameCopy, &hPrinter, &printerDefaults)) {
-        return false;
+        DWORD errorCode = GetLastError();
+        std::string errorMsg = "Failed to open printer, error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
     }
     
     // Get printer DC
@@ -51,74 +56,105 @@ static bool PrintBitmapToPrinter(HBITMAP hBitmap, const wchar_t* printerName) {
     // Use StartDoc/StartPage/EndPage/EndDoc for printing
     hdcPrinter = CreateDCW(L"WINSPOOL", printerNameCopy, nullptr, nullptr);
     if (!hdcPrinter) {
+        DWORD errorCode = GetLastError();
         ClosePrinter(hPrinter);
-        return false;
+        std::string errorMsg = "Failed to create printer DC, error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
     }
     
-    if (StartDocW(hdcPrinter, &di) > 0) {
-        if (StartPage(hdcPrinter) > 0) {
-            // Get bitmap dimensions
-            BITMAP bm;
-            GetObject(hBitmap, sizeof(BITMAP), &bm);
-            
-            // Get printer page size and margins
-            int pageWidth = GetDeviceCaps(hdcPrinter, PHYSICALWIDTH);
-            int pageHeight = GetDeviceCaps(hdcPrinter, PHYSICALHEIGHT);
-            int marginX = GetDeviceCaps(hdcPrinter, PHYSICALOFFSETX);
-            int marginY = GetDeviceCaps(hdcPrinter, PHYSICALOFFSETY);
-            int printableWidth = GetDeviceCaps(hdcPrinter, HORZRES);
-            int printableHeight = GetDeviceCaps(hdcPrinter, VERTRES);
-            
-            // Validate dimensions
-            if (bm.bmWidth <= 0 || bm.bmHeight <= 0 || 
-                printableWidth <= 0 || printableHeight <= 0) {
-                EndPage(hdcPrinter);
-                EndDoc(hdcPrinter);
-                DeleteDC(hdcPrinter);
-                ClosePrinter(hPrinter);
-                return false;
-            }
-            
-            // Calculate scaling to fit printable area
-            double scaleX = (double)printableWidth / bm.bmWidth;
-            double scaleY = (double)printableHeight / bm.bmHeight;
-            double scale = (scaleX < scaleY) ? scaleX : scaleY;
-            
-            int printWidth = (int)(bm.bmWidth * scale);
-            int printHeight = (int)(bm.bmHeight * scale);
-            int printX = marginX + (printableWidth - printWidth) / 2;
-            int printY = marginY + (printableHeight - printHeight) / 2;
-            
-            // Create memory DC for bitmap
-            HDC hdcMem = CreateCompatibleDC(hdcPrinter);
-            if (hdcMem) {
-                HGDIOBJ oldBitmap = SelectObject(hdcMem, hBitmap);
-                
-                // Use HALFTONE for better quality
-                SetStretchBltMode(hdcPrinter, HALFTONE);
-                SetBrushOrgEx(hdcPrinter, 0, 0, nullptr);
-                
-                // Blit bitmap to printer DC (reference WinUtil.cpp BlitHBITMAP)
-                BOOL blitSuccess = StretchBlt(hdcPrinter, printX, printY, printWidth, printHeight,
-                                             hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-                
-                SelectObject(hdcMem, oldBitmap);
-                DeleteDC(hdcMem);
-                
-                if (blitSuccess) {
-                    success = true;
-                }
-            }
-            
-            EndPage(hdcPrinter);
-        }
+    int docResult = StartDocW(hdcPrinter, &di);
+    if (docResult <= 0) {
+        DWORD errorCode = GetLastError();
+        DeleteDC(hdcPrinter);
+        ClosePrinter(hPrinter);
+        std::string errorMsg = "Failed to start print job (StartDocW), error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
+    }
+    
+    int pageResult = StartPage(hdcPrinter);
+    if (pageResult <= 0) {
+        DWORD errorCode = GetLastError();
         EndDoc(hdcPrinter);
+        DeleteDC(hdcPrinter);
+        ClosePrinter(hPrinter);
+        std::string errorMsg = "Failed to start page (StartPage), error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
     }
     
+    // Get bitmap dimensions
+    BITMAP bm;
+    GetObject(hBitmap, sizeof(BITMAP), &bm);
+    
+    // Get printer page size and margins
+    int pageWidth = GetDeviceCaps(hdcPrinter, PHYSICALWIDTH);
+    int pageHeight = GetDeviceCaps(hdcPrinter, PHYSICALHEIGHT);
+    int marginX = GetDeviceCaps(hdcPrinter, PHYSICALOFFSETX);
+    int marginY = GetDeviceCaps(hdcPrinter, PHYSICALOFFSETY);
+    int printableWidth = GetDeviceCaps(hdcPrinter, HORZRES);
+    int printableHeight = GetDeviceCaps(hdcPrinter, VERTRES);
+    
+    // Validate dimensions
+    if (bm.bmWidth <= 0 || bm.bmHeight <= 0 || 
+        printableWidth <= 0 || printableHeight <= 0) {
+        EndPage(hdcPrinter);
+        EndDoc(hdcPrinter);
+        DeleteDC(hdcPrinter);
+        ClosePrinter(hPrinter);
+        std::string errorMsg = "Invalid bitmap or printer dimensions (bitmap: " + 
+                               std::to_string(bm.bmWidth) + "x" + std::to_string(bm.bmHeight) +
+                               ", printable: " + std::to_string(printableWidth) + "x" + std::to_string(printableHeight) + ")";
+        throw Napi::Error::New(env, errorMsg);
+    }
+    
+    // Calculate scaling to fit printable area
+    double scaleX = (double)printableWidth / bm.bmWidth;
+    double scaleY = (double)printableHeight / bm.bmHeight;
+    double scale = (scaleX < scaleY) ? scaleX : scaleY;
+    
+    int printWidth = (int)(bm.bmWidth * scale);
+    int printHeight = (int)(bm.bmHeight * scale);
+    int printX = marginX + (printableWidth - printWidth) / 2;
+    int printY = marginY + (printableHeight - printHeight) / 2;
+    
+    // Create memory DC for bitmap
+    HDC hdcMem = CreateCompatibleDC(hdcPrinter);
+    if (!hdcMem) {
+        DWORD errorCode = GetLastError();
+        EndPage(hdcPrinter);
+        EndDoc(hdcPrinter);
+        DeleteDC(hdcPrinter);
+        ClosePrinter(hPrinter);
+        std::string errorMsg = "Failed to create memory DC, error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
+    }
+    
+    HGDIOBJ oldBitmap = SelectObject(hdcMem, hBitmap);
+    
+    // Use HALFTONE for better quality
+    SetStretchBltMode(hdcPrinter, HALFTONE);
+    SetBrushOrgEx(hdcPrinter, 0, 0, nullptr);
+    
+    // Blit bitmap to printer DC (reference WinUtil.cpp BlitHBITMAP)
+    BOOL blitSuccess = StretchBlt(hdcPrinter, printX, printY, printWidth, printHeight,
+                                 hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    
+    SelectObject(hdcMem, oldBitmap);
+    DeleteDC(hdcMem);
+    
+    if (!blitSuccess) {
+        DWORD errorCode = GetLastError();
+        EndPage(hdcPrinter);
+        EndDoc(hdcPrinter);
+        DeleteDC(hdcPrinter);
+        ClosePrinter(hPrinter);
+        std::string errorMsg = "Failed to blit bitmap to printer, error code: " + std::to_string(errorCode);
+        throw Napi::Error::New(env, errorMsg);
+    }
+    
+    EndPage(hdcPrinter);
+    EndDoc(hdcPrinter);
     DeleteDC(hdcPrinter);
     ClosePrinter(hPrinter);
-    
-    return success;
 }
 
 static HBITMAP CreateHBITMAPFromBitmapData(BitmapData* bitmapData) {
@@ -210,56 +246,99 @@ Napi::Value PrintPdf(const Napi::CallbackInfo& info) {
     
     // Initialize pdfium
     if (!PdfiumWrapper::Initialize()) {
-        Napi::Error::New(env, "Failed to initialize pdfium").ThrowAsJavaScriptException();
-        return env.Null();
+        throw Napi::Error::New(env, "Failed to initialize pdfium");
     }
     
-    // Load PDF
-    if (!PdfiumWrapper::LoadPdf(filePath)) {
+    try {
+        // Load PDF
+        if (!PdfiumWrapper::LoadPdf(filePath)) {
+            PdfiumWrapper::Shutdown();
+            throw Napi::Error::New(env, "Failed to load PDF file: " + filePath);
+        }
+        
+        int pageCount = PdfiumWrapper::GetPageCount();
+        if (pageCount == 0) {
+            PdfiumWrapper::Shutdown();
+            throw Napi::Error::New(env, "PDF has no pages");
+        }
+        
+        // Print each page
+        for (int i = 0; i < pageCount; i++) {
+            BitmapData* bitmap = nullptr;
+            HBITMAP hBitmap = nullptr;
+            
+            try {
+                // Render page to bitmap
+                bitmap = PdfiumWrapper::RenderPageToBitmap(i, dpi);
+                if (!bitmap) {
+                    throw Napi::Error::New(env, "Failed to render page " + std::to_string(i + 1) + " to bitmap");
+                }
+                
+                // Convert to HBITMAP
+                hBitmap = CreateHBITMAPFromBitmapData(bitmap);
+                if (!hBitmap) {
+                    PdfiumWrapper::FreeBitmap(bitmap);
+                    throw Napi::Error::New(env, "Failed to create HBITMAP for page " + std::to_string(i + 1));
+                }
+                
+                // Print bitmap
+                PrintBitmapToPrinter(hBitmap, nullptr, env);
+                
+                // Clean up
+                DeleteObject(hBitmap);
+                PdfiumWrapper::FreeBitmap(bitmap);
+                
+            } catch (const Napi::Error& e) {
+                // Clean up resources before rethrowing
+                if (hBitmap) {
+                    DeleteObject(hBitmap);
+                }
+                if (bitmap) {
+                    PdfiumWrapper::FreeBitmap(bitmap);
+                }
+                PdfiumWrapper::CloseDocument();
+                PdfiumWrapper::Shutdown();
+                throw;
+            } catch (const std::exception& e) {
+                // Clean up resources before throwing
+                if (hBitmap) {
+                    DeleteObject(hBitmap);
+                }
+                if (bitmap) {
+                    PdfiumWrapper::FreeBitmap(bitmap);
+                }
+                PdfiumWrapper::CloseDocument();
+                PdfiumWrapper::Shutdown();
+                throw Napi::Error::New(env, "Exception while printing page " + std::to_string(i + 1) + ": " + std::string(e.what()));
+            } catch (...) {
+                // Clean up resources before throwing
+                if (hBitmap) {
+                    DeleteObject(hBitmap);
+                }
+                if (bitmap) {
+                    PdfiumWrapper::FreeBitmap(bitmap);
+                }
+                PdfiumWrapper::CloseDocument();
+                PdfiumWrapper::Shutdown();
+                throw Napi::Error::New(env, "Unknown exception while printing page " + std::to_string(i + 1));
+            }
+        }
+        
+        PdfiumWrapper::CloseDocument();
         PdfiumWrapper::Shutdown();
-        Napi::Error::New(env, "Failed to load PDF file").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-    
-    int pageCount = PdfiumWrapper::GetPageCount();
-    if (pageCount == 0) {
+        
+        return Napi::Boolean::New(env, true);
+        
+    } catch (const Napi::Error& e) {
+        // Re-throw NAPI errors as-is
+        throw;
+    } catch (const std::exception& e) {
         PdfiumWrapper::Shutdown();
-        Napi::Error::New(env, "PDF has no pages").ThrowAsJavaScriptException();
-        return env.Null();
+        throw Napi::Error::New(env, "Exception during PDF processing: " + std::string(e.what()));
+    } catch (...) {
+        PdfiumWrapper::Shutdown();
+        throw Napi::Error::New(env, "Unknown exception during PDF processing");
     }
-    
-    // Print each page
-    bool success = true;
-    for (int i = 0; i < pageCount; i++) {
-        BitmapData* bitmap = PdfiumWrapper::RenderPageToBitmap(i, dpi);
-        if (!bitmap) {
-            success = false;
-            break;
-        }
-        
-        // Convert to HBITMAP
-        HBITMAP hBitmap = CreateHBITMAPFromBitmapData(bitmap);
-        if (!hBitmap) {
-            PdfiumWrapper::FreeBitmap(bitmap);
-            success = false;
-            break;
-        }
-        
-        // Print bitmap
-        bool pageSuccess = PrintBitmapToPrinter(hBitmap, nullptr);
-        DeleteObject(hBitmap);
-        PdfiumWrapper::FreeBitmap(bitmap);
-        
-        if (!pageSuccess) {
-            success = false;
-            break;
-        }
-    }
-    
-    PdfiumWrapper::CloseDocument();
-    PdfiumWrapper::Shutdown();
-    
-    return Napi::Boolean::New(env, success);
 }
 
 // Module initialization
